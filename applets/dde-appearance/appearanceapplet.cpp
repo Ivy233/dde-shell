@@ -13,6 +13,7 @@
 DCORE_USE_NAMESPACE
 DS_BEGIN_NAMESPACE
 namespace dde {
+Q_LOGGING_CATEGORY(appearanceLog, "org.deepin.dde.shell.appearance")
 
 AppearanceApplet::AppearanceApplet(QObject *parent)
     : DApplet(parent)
@@ -44,13 +45,13 @@ qreal AppearanceApplet::opacity() const
 
 void AppearanceApplet::initDBusProxy()
 {
-    qDebug() << "Init appearance dbus proxy.";
+    qCDebug(appearanceLog) << "Init appearance dbus proxy.";
     m_interface.reset(new org::deepin::dde::Appearance1("org.deepin.dde.Appearance1",
                                                         "/org/deepin/dde/Appearance1",
                                                         QDBusConnection::sessionBus(),
                                                         this));
     if (!m_interface->isValid()) {
-        qWarning() << "Failed to proxy Appearance, error:" << m_interface->lastError();
+        qCDebug(appearanceLog) << "Failed to proxy Appearance, error:" << m_interface->lastError();
         m_interface.reset();
         updateOpacity(-1);
         return;

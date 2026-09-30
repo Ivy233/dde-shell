@@ -211,7 +211,7 @@ int DisPlayModeApplet::fetchState() const
     int state = 1;
     QScopedPointer<DConfig> config(DConfig::create("org.deepin.dde.control-center", "org.deepin.dde.control-center", QString()));
 
-    if (config->isValid()) {
+    if (config && config->isValid()) {
         bool inHideModules = config->value("hideModule").toStringList().contains("display/mode");
         bool inDisableModules = config->value("disableModule").toStringList().contains("display/mode");
         if (!inHideModules && !inDisableModules) {

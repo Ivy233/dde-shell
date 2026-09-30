@@ -736,8 +736,9 @@ void NotificationManager::queryScreenLockedState()
             // An absent service is expected at startup. Wait for its registration or Visible.
             const auto error = reply.error();
             if (error.type() != QDBusError::ServiceUnknown
-                && error.name() != QLatin1String("org.freedesktop.DBus.Error.NameHasNoOwner")) {
-                qWarning(notifyLog) << "Failed to get the lock visible property:" << error.message();
+                && error.name() != QLatin1String("org.freedesktop.DBus.Error.NameHasNoOwner")
+                && error.type() != QDBusError::NoReply) {
+                qCDebug(notifyLog) << "Failed to get the lock visible property:" << error.message();
             }
             return;
         }

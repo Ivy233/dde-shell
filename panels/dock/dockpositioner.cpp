@@ -14,11 +14,13 @@ DS_USE_NAMESPACE
 
 namespace dock {
 
+Q_LOGGING_CATEGORY(dockPositionerLog, "org.deepin.dde.shell.dock.positioner")
+
 static DPanel *isInDockPanel(QObject *object)
 {
     auto dockPanel = qobject_cast<DPanel *>(DPanel::qmlAttachedProperties(object));
     if (!dockPanel || dockPanel->pluginId() != "org.deepin.ds.dock") {
-        qWarning() << "only used in DockPanel.";
+        qCDebug(dockPositionerLog) << "only used in DockPanel.";
         return nullptr;
     }
     return dockPanel;

@@ -103,70 +103,73 @@ DockGlobalElementModel::DockGlobalElementModel(QAbstractItemModel *appsModel, Do
         m_activeAppModel,
         &QAbstractItemModel::rowsInserted,
         this,
-        [this](const QModelIndex &parent, int first, int last) {
-            Q_UNUSED(parent)
-            for (int i = first; i <= last; ++i) {
-                auto index = m_activeAppModel->index(i, 0);
-                auto desktopId = index.data(TaskManager::DesktopIdRole).toString();
+       [this](const QModelIndex &parent, int first, int last) {
+           Q_UNUSED(parent)
+           // Shift existing cached rows before adding new entries, so that entries
+           // at or after the insertion point don't collide with new entries.
+           std::for_each(m_data.begin(), m_data.end(), [this, first, last](auto &data) {
+               if (std::get<1>(data) == m_activeAppModel && std::get<2>(data) >= first) {
+                   data = std::make_tuple(std::get<0>(data),
+                                          std::get<1>(data),
+                                          std::get<2>(data) + ((last - first) + 1));
+               }
+           });
 
-               if (desktopId.isEmpty())
-                    continue;
-                //将同一应用的窗口添加到一起 
-                // Find the first occurrence of this app in m_data (either docked item or existing window)
-                auto firstIt = std::find_if(m_data.begin(), m_data.end(), [&desktopId](const auto &data) {
-                    return std::get<0>(data) == desktopId;
-                });
+           for (int i = first; i <= last; ++i) {
+               auto index = m_activeAppModel->index(i, 0);
+               auto desktopId = index.data(TaskManager::DesktopIdRole).toString();
 
-                if (firstIt == m_data.end()) {
-                    // No docked item or existing window yet, append to the end
-                    beginInsertRows(QModelIndex(), m_data.size(), m_data.size());
-                    m_data.append(std::make_tuple(desktopId, m_activeAppModel, i));
-                    endInsertRows();
-                    continue;
-                }
+              if (desktopId.isEmpty())
+                   continue;
+               //将同一应用的窗口添加到一起
+               // Find the first occurrence of this app in m_data (either docked item or existing window)
+               auto firstIt = std::find_if(m_data.begin(), m_data.end(), [&desktopId](const auto &data) {
+                   return std::get<0>(data) == desktopId;
+               });
 
-                // If the first occurrence still comes from m_appsModel, this is the first window:
-                // reuse the docked position and turn it into a running window.
-                if (std::get<1>(*firstIt) == m_appsModel) {
-                    *firstIt = std::make_tuple(desktopId, m_activeAppModel, i);
-                    auto pIndex = this->index(firstIt - m_data.begin(), 0);
-                    Q_EMIT dataChanged(pIndex,
-                                       pIndex,
-                                       {TaskManager::ActiveRole,
-                                        TaskManager::AttentionRole,
-                                        TaskManager::WindowsRole,
-                                        TaskManager::MenusRole,
-                                        TaskManager::WinTitleRole,
-                                        TaskManager::IconNameRole,
-                                        TaskManager::NameRole});
-                    continue;
-                }
+               if (firstIt == m_data.end()) {
+                   // No docked item or existing window yet, append to the end
+                   beginInsertRows(QModelIndex(), m_data.size(), m_data.size());
+                   m_data.append(std::make_tuple(desktopId, m_activeAppModel, i));
+                   endInsertRows();
+                   continue;
+               }
 
-                // There are already windows for this app: insert the new window
-                // right after the last (rightmost) existing one.
-                // Search the entire list since windows may not be consecutive after drag reorder.
-                auto lastIt = firstIt;
-                for (auto it = firstIt + 1; it != m_data.end(); ++it) {
-                    if (std::get<0>(*it) == desktopId) {
-                        lastIt = it;
-                    }
-                }
+               // If the first occurrence still comes from m_appsModel, this is the first window:
+               // reuse the docked position and turn it into a running window.
+               if (std::get<1>(*firstIt) == m_appsModel) {
+                   *firstIt = std::make_tuple(desktopId, m_activeAppModel, i);
+                   auto pIndex = this->index(firstIt - m_data.begin(), 0);
+                   Q_EMIT dataChanged(pIndex,
+                                      pIndex,
+                                      {TaskManager::ActiveRole,
+                                       TaskManager::AttentionRole,
+                                       TaskManager::WindowsRole,
+                                       TaskManager::MenusRole,
+                                       TaskManager::WinTitleRole,
+                                       TaskManager::IconNameRole,
+                                       TaskManager::NameRole});
+                   continue;
+               }
 
-                auto insertRow = (lastIt - m_data.begin()) + 1;
-                beginInsertRows(QModelIndex(), insertRow, insertRow);
-                m_data.insert(lastIt + 1, std::make_tuple(desktopId, m_activeAppModel, i));
-                endInsertRows();
-            }
+               // There are already windows for this app: insert the new window
+               // right after the last (rightmost) existing one.
+               // Search the entire list since windows may not be consecutive after drag reorder.
+               auto lastIt = firstIt;
+               for (auto it = firstIt + 1; it != m_data.end(); ++it) {
+                   if (std::get<0>(*it) == desktopId) {
+                       lastIt = it;
+                   }
+               }
 
-            std::for_each(m_data.begin(), m_data.end(), [this, first, last](auto &data) {
-                if (std::get<1>(data) == m_activeAppModel && std::get<2>(data) > first) {
-                    data = std::make_tuple(std::get<0>(data),
-                                           std::get<1>(data),
-                                           std::get<2>(data) + ((last - first) + 1));
-                }
-            });
-        },
-        Qt::QueuedConnection);
+               auto insertRow = (lastIt - m_data.begin()) + 1;
+               beginInsertRows(QModelIndex(), insertRow, insertRow);
+               m_data.insert(lastIt + 1, std::make_tuple(desktopId, m_activeAppModel, i));
+               endInsertRows();
+           }
+
+       },
+       Qt::QueuedConnection);
 
     connect(
         m_activeAppModel,
@@ -186,7 +189,7 @@ DockGlobalElementModel::DockGlobalElementModel(QAbstractItemModel *appsModel, Do
                 });
 
                 if (it == m_data.end()) {
-                    qWarning() << "failed to find a running apps on dock" << i;
+                    qCDebug(dockGlobalElementModelLog) << "failed to find a running apps on dock" << i;
                     continue;
                 }
 

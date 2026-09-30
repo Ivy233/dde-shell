@@ -20,7 +20,6 @@ Item {
     property alias removeDisplaced: listView.removeDisplaced
     property alias moveDisplaced: listView.moveDisplaced
     ListView {
-        Component.onCompleted: { Accessible.id = "ListView" }
         id: listView
         anchors.fill: parent
         orientation: useColumnLayout ? ListView.Vertical : ListView.Horizontal
@@ -28,6 +27,17 @@ Item {
         verticalLayoutDirection: ListView.TopToBottom
         interactive: false
         Accessible.role: Accessible.List
+        Component.onCompleted: {
+            Accessible.id = "ListView"
+            Qt.callLater(root.updateImplicitSizes)
+        }
+        onCountChanged: Qt.callLater(root.updateImplicitSizes)
+        onSpacingChanged: Qt.callLater(root.updateImplicitSizes)
+    }
+
+    Connections {
+        target: listView.contentItem
+        function onChildrenChanged() { Qt.callLater(root.updateImplicitSizes) }
     }
 
     function calculateImplicitWidth(prev, current) {
@@ -56,20 +66,26 @@ Item {
         return listView.indexAt(x, y)
     }
 
-    implicitWidth: {
+    // Use imperative property updates instead of direct bindings to avoid a
+    // binding loop: implicitHeight -> visibleChildren -> layout -> implicitHeight.
+    // Qt.callLater coalesces multiple signals into a single deferred update,
+    // breaking the synchronous re-evaluation cycle.
+    property real _implicitContentWidth: 1
+    property real _implicitContentHeight: 1
+
+    function updateImplicitSizes() {
         let width = 0
-        for (let child of listView.contentItem.visibleChildren) {
-            width = calculateImplicitWidth(width, child.implicitWidth)
-        }
-        // TODO: abvoe qt6.8 implicitSize to 0 will make size to 0 default.
-        // so make minimum implicitSize to 1, find why and remove below
-        return Math.max(width, 1)
-    }
-    implicitHeight: {
         let height = 0
         for (let child of listView.contentItem.visibleChildren) {
+            width = calculateImplicitWidth(width, child.implicitWidth)
             height = calculateImplicitHeight(height, child.implicitHeight)
         }
-        return Math.max(height, 1)
+        // TODO: above qt6.8 implicitSize to 0 will make size to 0 default.
+        // so make minimum implicitSize to 1, find why and remove below
+        _implicitContentWidth = Math.max(width, 1)
+        _implicitContentHeight = Math.max(height, 1)
     }
+
+    implicitWidth: _implicitContentWidth
+    implicitHeight: _implicitContentHeight
 }
