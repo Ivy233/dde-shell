@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2023 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2023 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -7,8 +7,10 @@
 #include "pluginfactory.h"
 
 #include <QDBusConnection>
+#include <QDBusConnectionInterface>
 #include <QDBusPendingCall>
 #include <QDBusReply>
+#include <QDBusServiceWatcher>
 #include <QLoggingCategory>
 
 #include <DConfig>
@@ -75,6 +77,16 @@ DisPlayModeApplet::DisPlayModeApplet(QObject *parent)
     m_actionTimer->setSingleShot(true);
     m_actionTimer->setInterval(2000);
     QObject::connect(m_actionTimer, &QTimer::timeout, this, &DisPlayModeApplet::doAction);
+
+    // dde-dconfig-daemon may not be ready when the OSD applet loads
+    // (startup race); refetch the DConfig-backed state once it registers.
+    auto configWatcher = new QDBusServiceWatcher(QStringLiteral("org.desktopspec.ConfigManager"),
+                                                 QDBusConnection::systemBus(),
+                                                 QDBusServiceWatcher::WatchForRegistration, this);
+    QObject::connect(configWatcher, &QDBusServiceWatcher::serviceRegistered, this, [this](const QString &) {
+        qCDebug(osdDPLog) << "ConfigManager registered, refetching display mode state";
+        sync();
+    });
 }
 
 int DisPlayModeApplet::state() const
@@ -207,6 +219,15 @@ DPItem *DisPlayModeApplet::fetchCurrentPlanItem() const
 int DisPlayModeApplet::fetchState() const
 {
     DCORE_USE_NAMESPACE;
+
+    // Skip the DConfig query entirely while dde-dconfig-daemon is not
+    // registered on the system bus; DConfig::isValid() would log a warning
+    // for a backend failure that is just the startup race. The service
+    // watcher refetches once the daemon appears.
+    if (!QDBusConnection::systemBus().interface()->isServiceRegistered(QStringLiteral("org.desktopspec.ConfigManager"))) {
+        qCDebug(osdDPLog) << "ConfigManager not registered, keeping default display mode state";
+        return 1;
+    }
 
     int state = 1;
     QScopedPointer<DConfig> config(DConfig::create("org.deepin.dde.control-center", "org.deepin.dde.control-center", QString()));

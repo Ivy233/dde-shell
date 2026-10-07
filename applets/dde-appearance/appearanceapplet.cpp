@@ -9,6 +9,7 @@
 #include <QDBusError>
 #include <QDebug>
 #include <QDBusServiceWatcher>
+#include <QDBusConnectionInterface>
 
 DCORE_USE_NAMESPACE
 DS_BEGIN_NAMESPACE
@@ -44,6 +45,18 @@ qreal AppearanceApplet::opacity() const
 
 void AppearanceApplet::initDBusProxy()
 {
+    // Skip while the appearance service has not registered yet; the service
+    // watcher above retries via initDBusProxy() once it appears, so the
+    // proxy is only created when the call can succeed (an invalid proxy
+    // here would just be the startup race and is retried anyway).
+    // sessionBus().interface() is null when the session bus itself is
+    // unavailable; defer in that case too instead of dereferencing null.
+    auto *busInterface = QDBusConnection::sessionBus().interface();
+    if (!busInterface || !busInterface->isServiceRegistered(QStringLiteral("org.deepin.dde.Appearance1"))) {
+        qDebug() << "Appearance service not registered yet, deferring dbus proxy.";
+        return;
+    }
+
     qDebug() << "Init appearance dbus proxy.";
     m_interface.reset(new org::deepin::dde::Appearance1("org.deepin.dde.Appearance1",
                                                         "/org/deepin/dde/Appearance1",

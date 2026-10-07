@@ -557,6 +557,13 @@ int TaskManager::queryTrashCount() const
         }
         return count;
     }
+    // waitForFinished() timed out (or gio failed to finish): a QProcess
+    // destroyed while its child is still running logs a warning from the
+    // destructor, so kill and reap it before gio goes out of scope.
+    if (gio.state() != QProcess::NotRunning) {
+        gio.kill();
+        gio.waitForFinished(1000);
+    }
     return count;
 }
 

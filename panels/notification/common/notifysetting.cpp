@@ -1,4 +1,4 @@
-// SPDX-FileCopyrightText: 2024 UnionTech Software Technology Co., Ltd.
+// SPDX-FileCopyrightText: 2024 - 2026 UnionTech Software Technology Co., Ltd.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -6,7 +6,14 @@
 
 #include <DConfig>
 
+#include <QDBusConnection>
+#include <QDBusConnectionInterface>
+#include <QDBusServiceWatcher>
+#include <QLoggingCategory>
+
 namespace notification {
+
+Q_DECLARE_LOGGING_CATEGORY(notifyLog)
 
 NotifySetting * NotifySetting::instance()
 {
@@ -36,6 +43,17 @@ NotifySetting::NotifySetting(QObject *parent)
         }
     });
 
+    // dde-dconfig-daemon may not be ready when the notification server loads
+    // (startup race); refetch the settings once it registers.
+    auto configWatcher = new QDBusServiceWatcher(QStringLiteral("org.desktopspec.ConfigManager"),
+                                                 QDBusConnection::systemBus(),
+                                                 QDBusServiceWatcher::WatchForRegistration, this);
+    connect(configWatcher, &QDBusServiceWatcher::serviceRegistered, this, [this](const QString &) {
+        qCDebug(notifyLog) << "ConfigManager registered, refetching bubble settings";
+        updateMaxBubbleCount();
+        updateBubbleContentRowCount();
+    });
+
     updateMaxBubbleCount();
     updateBubbleContentRowCount();
 }
@@ -48,7 +66,14 @@ NotifySetting::~NotifySetting()
 
 void NotifySetting::updateMaxBubbleCount()
 {
-    auto count = m_setting->value("bubbleCount").toInt();
+    const auto value = m_setting->value("bubbleCount");
+    if (!value.isValid()) {
+        // Backend not ready (dde-dconfig-daemon startup race) or key unknown;
+        // the service watcher above refetches once the daemon registers.
+        return;
+    }
+
+    auto count = value.toInt();
     if (count < 1) {
         qWarning() << "Invalid settings of bubbleCount:" << count << ", it should be greater than 0";
         return;
@@ -62,7 +87,12 @@ void NotifySetting::updateMaxBubbleCount()
 
 void NotifySetting::updateBubbleContentRowCount()
 {
-    auto count = m_setting->value("bubbleContentRowCount").toInt();
+    const auto value = m_setting->value("bubbleContentRowCount");
+    if (!value.isValid()) {
+        return;
+    }
+
+    auto count = value.toInt();
     if (count < 1) {
         qWarning() << "Invalid settings of bubbleContentRowCount:" << count << ", it should be greater than 0";
         return;

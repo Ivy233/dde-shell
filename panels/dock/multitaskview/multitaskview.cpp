@@ -7,6 +7,7 @@
 #include "../constants.h"
 
 #include <QBuffer>
+#include <QPointer>
 #include <QProcess>
 
 #include <DDciIcon>
@@ -68,13 +69,27 @@ bool MultiTaskView::init()
 
 void MultiTaskView::queryKwinVersion()
 {
-    auto *process = new QProcess(this);
+    // Not parented on the applet: if the applet is destroyed while
+    // dpkg-query is still running (shell exit or applet reload), a parented
+    // QProcess would be destroyed mid-run and QProcess logs a warning from
+    // its destructor.
+    // The connections use the process itself as context so cleanup always
+    // runs: even when the applet is destroyed first, the process still
+    // deletes itself once it finishes (or on FailedToStart, which has no
+    // finished signal) instead of leaking; the QPointer guard keeps a
+    // finished process from touching a deleted applet.
+    auto *process = new QProcess;
     process->start(QStringLiteral("dpkg-query"), { QStringLiteral("-W"), QStringLiteral("-f=${Version}"), QStringLiteral("kwin-x11") });
-    connect(process, &QProcess::finished, this, [this, process](int exitCode, QProcess::ExitStatus status) {
-        if (status == QProcess::NormalExit && exitCode == 0) {
-            m_kwinVersion = QString::fromLocal8Bit(process->readAllStandardOutput()).trimmed();
+    QPointer<MultiTaskView> guard(this);
+    connect(process, &QProcess::finished, process, [guard, process](int exitCode, QProcess::ExitStatus status) {
+        if (guard && status == QProcess::NormalExit && exitCode == 0) {
+            guard->m_kwinVersion = QString::fromLocal8Bit(process->readAllStandardOutput()).trimmed();
         }
         process->deleteLater();
+    });
+    connect(process, &QProcess::errorOccurred, process, [process](QProcess::ProcessError error) {
+        if (error == QProcess::FailedToStart)
+            process->deleteLater();
     });
 }
 
