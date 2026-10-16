@@ -68,8 +68,30 @@ void Shell::setFlickableWheelDeceleration(const int &value)
         qputenv("QT_QUICK_FLICKABLE_WHEEL_DECELERATION", QString::number(value).toLocal8Bit());
 }
 
+class ScopedDConfigLogSuppression
+{
+public:
+    ScopedDConfigLogSuppression()
+    {
+        m_oldRules = QLoggingCategory::filterRules();
+        auto rules = m_oldRules;
+        if (!rules.isEmpty())
+            rules += QStringLiteral("
+");
+        rules += QStringLiteral("dtk.dsg.config.warning=false");
+        QLoggingCategory::setFilterRules(rules);
+    }
+    ~ScopedDConfigLogSuppression()
+    {
+        QLoggingCategory::setFilterRules(m_oldRules);
+    }
+private:
+    QString m_oldRules;
+};
+
 void Shell::dconfigsMigrate()
 {
+    ScopedDConfigLogSuppression logSuppression;
     std::unique_ptr<Dtk::Core::DConfig> dconfig(Dtk::Core::DConfig::create("org.deepin.dde.shell", "org.deepin.dde.shell"));
     auto migratedDconfigs = dconfig->value(QStringLiteral("migratedDConfigs"), QVariantHash()).toHash();
 
