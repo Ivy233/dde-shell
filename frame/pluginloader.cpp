@@ -20,6 +20,8 @@
 #include <QThread>
 #include <QFuture>
 #include <QtConcurrent>
+#include <fcntl.h>
+#include <unistd.h>
 
 DS_BEGIN_NAMESPACE;
 
@@ -61,6 +63,26 @@ public:
         m_loadMetaDatas = QtConcurrent::run(std::bind(&DPluginLoaderPrivate::initPlugins, this));
     }
 
+    void preloadPluginLibraries()
+    {
+        D_Q(DPluginLoader);
+        for (const auto &pluginId : m_plugins.keys()) {
+            for (const auto &dir : q->pluginDirs()) {
+                const QString soPath = QDir(dir).absoluteFilePath(pluginId + PluginSuffix);
+                if (!QFile::exists(soPath))
+                    continue;
+                const int fd = open(soPath.toUtf8().constData(), O_RDONLY | O_CLOEXEC);
+                if (fd >= 0) {
+                    posix_fadvise(fd, 0, 0, POSIX_FADV_WILLNEED);
+                    close(fd);
+                } else {
+                    qCDebug(dsLog) << "Failed to open plugin library for preloading:" << soPath;
+                }
+                break;
+            }
+        }
+    }
+
     void initPlugins()
     {
         for (const auto &item : m_pluginDirs) {
@@ -94,6 +116,7 @@ public:
                 m_plugins[info.pluginId()] = info;
             }
         }
+        preloadPluginLibraries();
     }
 
     QStringList builtinPackagePaths()

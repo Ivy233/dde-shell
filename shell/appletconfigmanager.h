@@ -23,8 +23,8 @@ public:
     explicit AppletConfigManager(QObject *parent = nullptr);
 
     QStringList disabledPlugins() const;
-    bool isAppletEnabled(const QString &pluginId) const;
-    void ensureAppletConfigs();
+    bool isAppletEnabled(const QString &pluginId);
+    void ensureAppletConfig(const QString &pluginId);
 
 Q_SIGNALS:
     void appletEnabledChanged(const QString &pluginId, bool enabled);

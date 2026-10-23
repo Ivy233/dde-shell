@@ -8,7 +8,6 @@
 
 #include <DConfig>
 #include <QLoggingCategory>
-#include <QSet>
 
 DS_BEGIN_NAMESPACE
 
@@ -30,8 +29,9 @@ QStringList AppletConfigManager::disabledPlugins() const
     return m_disabledPlugins;
 }
 
-bool AppletConfigManager::isAppletEnabled(const QString &pluginId) const
+bool AppletConfigManager::isAppletEnabled(const QString &pluginId)
 {
+    ensureAppletConfig(pluginId);
     return !m_disabledPlugins.contains(pluginId);
 }
 
@@ -48,36 +48,27 @@ void AppletConfigManager::setAppletEnabled(const QString &pluginId, bool enabled
     Q_EMIT appletEnabledChanged(pluginId, enabled);
 }
 
-void AppletConfigManager::ensureAppletConfigs()
+void AppletConfigManager::ensureAppletConfig(const QString &pluginId)
 {
-    auto loader = DPluginLoader::instance();
-    const auto plugins = loader->plugins();
-    QSet<QString> pluginIds;
-    for (const auto &plugin : plugins) {
-        pluginIds.insert(plugin.pluginId());
+    if (m_appletConfigs.contains(pluginId))
+        return;
+
+    auto config = DConfig::create(QLatin1String(AppId),
+                                  QLatin1String(ConfigName),
+                                  QLatin1Char('/') + pluginId,
+                                  this);
+    m_appletConfigs.insert(pluginId, config);
+    if (!config || !config->isValid()) {
+        qCWarning(dsLoaderLog) << "Unable to create applet DConfig; applet remains enabled:" << pluginId;
+        setAppletEnabled(pluginId, true);
+        return;
     }
 
-    for (const auto &pluginId : pluginIds) {
-        if (m_appletConfigs.contains(pluginId))
-            continue;
-
-        auto config = DConfig::create(QLatin1String(AppId),
-                                      QLatin1String(ConfigName),
-                                      QLatin1Char('/') + pluginId,
-                                      this);
-        m_appletConfigs.insert(pluginId, config);
-        if (!config || !config->isValid()) {
-            qCWarning(dsLoaderLog) << "Unable to create applet DConfig; applet remains enabled:" << pluginId;
-            setAppletEnabled(pluginId, true);
-            continue;
-        }
-
-        setAppletEnabled(pluginId, config->value(QLatin1String(EnableKey), true).toBool());
-        QObject::connect(config, &DConfig::valueChanged, this, [this, pluginId, config](const QString &key) {
-            if (key == QLatin1String(EnableKey))
-                setAppletEnabled(pluginId, config->value(QLatin1String(EnableKey), true).toBool());
-        });
-    }
+    setAppletEnabled(pluginId, config->value(QLatin1String(EnableKey), true).toBool());
+    QObject::connect(config, &DConfig::valueChanged, this, [this, pluginId, config](const QString &key) {
+        if (key == QLatin1String(EnableKey))
+            setAppletEnabled(pluginId, config->value(QLatin1String(EnableKey), true).toBool());
+    });
 }
 
 DS_END_NAMESPACE
