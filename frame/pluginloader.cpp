@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "pluginloader.h"
+#include "startuptimingrecorder.h"
 
 #include "applet.h"
 #include "containment.h"
@@ -63,6 +64,7 @@ public:
 
     void initPlugins()
     {
+        StartupTimingScope timingScope(QStringLiteral("plugin_discovery"));
         for (const auto &item : m_pluginDirs) {
             const QDirIterator::IteratorFlags flags = QDirIterator::Subdirectories | QDirIterator::FollowSymlinks;
             const QStringList nameFilters = {MetaDataFileName};
@@ -151,6 +153,7 @@ public:
         if (!existPlugin(data))
             return nullptr;
 
+        StartupTimingScope timingScope(QStringLiteral("so_load"), data.pluginId());
         DAppletFactory *factory = nullptr;
         const QString fileName = data.pluginId();
         QPluginLoader loader(fileName);

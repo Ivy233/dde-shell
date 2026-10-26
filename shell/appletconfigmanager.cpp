@@ -5,6 +5,7 @@
 #include "appletconfigmanager.h"
 
 #include "pluginloader.h"
+#include "startuptimingrecorder.h"
 
 #include <DConfig>
 #include <QLoggingCategory>
@@ -50,6 +51,7 @@ void AppletConfigManager::setAppletEnabled(const QString &pluginId, bool enabled
 
 void AppletConfigManager::ensureAppletConfigs()
 {
+    StartupTimingScope totalScope(QStringLiteral("dconfig_create"));
     auto loader = DPluginLoader::instance();
     const auto plugins = loader->plugins();
     QSet<QString> pluginIds;
@@ -61,6 +63,7 @@ void AppletConfigManager::ensureAppletConfigs()
         if (m_appletConfigs.contains(pluginId))
             continue;
 
+        StartupTimingScope pluginScope(QStringLiteral("dconfig_create"), pluginId);
         auto config = DConfig::create(QLatin1String(AppId),
                                       QLatin1String(ConfigName),
                                       QLatin1Char('/') + pluginId,

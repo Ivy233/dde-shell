@@ -7,6 +7,7 @@ set(PUBLIC_HEADERS
     pluginmetadata.h
     pluginloader.h
     pluginfactory.h
+    startuptimingrecorder.h
     applet.h
     appletdata.h
     containment.h
@@ -55,6 +56,7 @@ add_library(dde-shell-frame SHARED
     pluginmetadata.cpp
     pluginloader.cpp
     pluginfactory.cpp
+    startuptimingrecorder.cpp
     applet.cpp
     containment.cpp
     panel.cpp

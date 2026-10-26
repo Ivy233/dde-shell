@@ -22,6 +22,7 @@
 #include "pluginloader.h"
 #include "appletconfigmanager.h"
 #include "appletloader.h"
+#include "startuptimingrecorder.h"
 #include "qmlengine.h"
 #include "shell.h"
 
@@ -139,6 +140,7 @@ int main(int argc, char *argv[])
     setenv("DSG_APP_ID", "org.deepin.dde.shell", 0);
     DGuiApplicationHelper::setAttribute(DGuiApplicationHelper::UseInactiveColorGroup, false);
     DApplication a(argc, argv);
+    StartupTimingScope *totalStartupScope = new StartupTimingScope(QStringLiteral("total_startup"));
     // Don't apply to plugins
     qunsetenv("QT_SCALE_FACTOR");
     // dde-shell contains UI controls based on QML and Widget technologies.
@@ -251,8 +253,16 @@ int main(int argc, char *argv[])
     if (parser.isSet(sceneviewOption))
         manager.enableSceneview();
 
-    QMetaObject::invokeMethod(&a, [&manager](){
+    QMetaObject::invokeMethod(&a, [&manager, totalStartupScope](){
         manager.exec();
+        delete totalStartupScope;
+        if (StartupTimingRecorder::instance()->isEnabled()) {
+            const QString output = qgetenv("DDE_SHELL_BENCHMARK_OUTPUT");
+            const QString path = output.isEmpty()
+                ? QString("/tmp/dde-shell-benchmark-%1.json").arg(QCoreApplication::applicationPid())
+                : output;
+            StartupTimingRecorder::instance()->dumpToFile(path);
+        }
     }, Qt::QueuedConnection);
 
     QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, [&manager]() {

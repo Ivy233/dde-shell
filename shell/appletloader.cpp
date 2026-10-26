@@ -4,6 +4,7 @@
 
 #include "appletloader.h"
 #include "appletconfigmanager.h"
+#include "startuptimingrecorder.h"
 #include "pluginloader.h"
 #include "applet.h"
 #include "containment.h"
@@ -26,29 +27,6 @@ DCORE_USE_NAMESPACE;
 DGUI_USE_NAMESPACE
 
 Q_LOGGING_CATEGORY(dsLoaderLog, "org.deepin.dde.shell.loader")
-
-namespace {
-    class Benchmark
-    {
-    public:
-        explicit Benchmark(const QString &text)
-            : m_text(text)
-        {
-            m_timer.start();
-        }
-        ~Benchmark()
-        {
-            const auto elasped = m_timer.elapsed();
-            if (elasped >= m_timeout) {
-                qCWarning(dsLoaderLog) << qPrintable(m_text) << ": elasped time [" << elasped << "].";
-            }
-        }
-    private:
-        QString m_text;
-        int m_timeout = 100;
-        QElapsedTimer m_timer;
-    };
-}
 
 class DAppletLoaderPrivate : public DObjectPrivate
 {
@@ -178,6 +156,7 @@ void DAppletLoaderPrivate::doCreateRootObject(DApplet *applet)
     if (applet->pluginMetaData().url().isEmpty())
         return;
 
+    StartupTimingScope timingScope(QStringLiteral("applet_create_root"), applet->pluginId());
     DQmlEngine *engine = new DQmlEngine(applet, applet);
     QObject::connect(engine, &DQmlEngine::createFinished, applet, [this, applet, engine]() {
         auto rootObject = engine->rootObject();
@@ -202,8 +181,7 @@ void DAppletLoaderPrivate::doCreateRootObject(DApplet *applet)
 bool DAppletLoaderPrivate::doLoad(DApplet *applet)
 {
     D_Q(DAppletLoader);
-    Benchmark benchmark(QString("Load applet %1").arg(applet->pluginId()));
-    Q_UNUSED(benchmark);
+    StartupTimingScope timingScope(QStringLiteral("applet_load"), applet->pluginId(), {}, 100);
     if (!applet->load()) {
         qCWarning(dsLoaderLog) << "Plugin load failed:" << applet->pluginId();
         if (auto containment = qobject_cast<DContainment *>(applet->parentApplet())) {
@@ -218,8 +196,7 @@ bool DAppletLoaderPrivate::doLoad(DApplet *applet)
 bool DAppletLoaderPrivate::doInit(DApplet *applet)
 {
     D_Q(DAppletLoader);
-    Benchmark benchmark(QString("Init applet %1").arg(applet->pluginId()));
-    Q_UNUSED(benchmark);
+    StartupTimingScope timingScope(QStringLiteral("applet_init"), applet->pluginId(), {}, 100);
     if (!applet->init()) {
         qCWarning(dsLoaderLog) << "Plugin init failed:" << applet->pluginId();
         if (auto containment = qobject_cast<DContainment *>(applet->parentApplet())) {
@@ -333,6 +310,7 @@ void DAppletLoaderPrivate::loadTranslation(const DPluginMetaData &pluginData)
 {
     const QString baseDir = pluginData.pluginDir();
     const QString pluginId = pluginData.pluginId();
+    StartupTimingScope timingScope(QStringLiteral("translation_load"), pluginId);
 
     if (!m_configManager->isAppletEnabled(pluginId))
         return;
