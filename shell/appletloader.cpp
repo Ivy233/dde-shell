@@ -124,8 +124,6 @@ void DAppletLoader::exec()
         }
     }
 
-    d->loadTranslation(applet->pluginMetaData());
-
     if (!d->load(applet))
         return;
     
@@ -264,6 +262,8 @@ void DAppletLoaderPrivate::fail(const QString &pluginId, const QString &reason)
 
 bool DAppletLoaderPrivate::load(DApplet *applet)
 {
+    loadTranslation(applet->pluginMetaData());
+
     if (!doLoad(applet)) {
         return false;
     }
@@ -332,11 +332,6 @@ void DAppletLoaderPrivate::loadTranslation(const DPluginMetaData &pluginData)
                                    << "locale:" << QLocale::system().uiLanguages();
             translator->deleteLater();
         }
-    }
-
-    const auto children = DPluginLoader::instance()->childrenPlugin(pluginId);
-    for (const auto &childPluginData : children) {
-        loadTranslation(childPluginData);
     }
 }
 
