@@ -803,6 +803,13 @@ Window {
 
         function finishResize() {
             dock.isDragging = false
+            if (dock.compositorDrivenResize) {
+                if (dock.useColumnLayout) {
+                    dockSize = dock.width
+                } else {
+                    dockSize = dock.height
+                }
+            }
             Applet.dockSize = dockSize
             itemIconSizeBase = dockItemMaxSize
             pressedAndDragging(false)
@@ -849,21 +856,6 @@ Window {
         }
     }
 
-    Connections {
-        target: dock
-        enabled: dock.compositorDrivenResize && Applet.isResizing
-        function onWidthChanged() {
-            if (dock.useColumnLayout) {
-                dock.dockSize = dock.width
-            }
-        }
-
-        function onHeightChanged() {
-            if (!dock.useColumnLayout) {
-                dock.dockSize = dock.height
-            }
-        }
-    }
     function changeDragAreaAnchor() {
         switch(dock.positionForAnimation) {
         case Dock.Top: {
