@@ -27,6 +27,7 @@ public:
     QString appid() const;
     QString title() const;
     QList<uint32_t> state() const;
+    bool hasParent() const;
 
 Q_SIGNALS:
     // those signals only used for windowmonitor
@@ -38,6 +39,7 @@ Q_SIGNALS:
     void pidChanged();
     void titleChanged();
     void stateChanged();
+    void parentChanged();
 
 protected:
     void treeland_foreign_toplevel_handle_v2_pid(uint32_t pid) override;
@@ -45,6 +47,7 @@ protected:
     void treeland_foreign_toplevel_handle_v2_app_id(const QString &app_id) override;
     void treeland_foreign_toplevel_handle_v2_identifier(uint32_t identifier) override;
     void treeland_foreign_toplevel_handle_v2_state(wl_array *state) override;
+    void treeland_foreign_toplevel_handle_v2_parent(struct ::treeland_foreign_toplevel_handle_v2 *parent) override;
     void treeland_foreign_toplevel_handle_v2_done() override;
     void treeland_foreign_toplevel_handle_v2_closed() override;
 
@@ -54,6 +57,7 @@ private:
     bool m_isReady;
     QString m_appId;
     uint32_t m_identifier;
+    bool m_hasParent;
 
     QList<uint32_t> m_states;
 };

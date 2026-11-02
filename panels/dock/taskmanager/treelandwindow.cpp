@@ -23,6 +23,7 @@ ForeignToplevelHandle::ForeignToplevelHandle(struct ::treeland_foreign_toplevel_
     , m_pid(0)
     , m_isReady(false)
     , m_identifier(0)
+    , m_hasParent(false)
 {
     init(object);
 }
@@ -62,6 +63,11 @@ QList<uint32_t> ForeignToplevelHandle::state() const
 bool ForeignToplevelHandle::isReady() const
 {
     return m_isReady;
+}
+
+bool ForeignToplevelHandle::hasParent() const
+{
+    return m_hasParent;
 }
 
 void ForeignToplevelHandle::treeland_foreign_toplevel_handle_v2_pid(uint32_t pid)
@@ -105,6 +111,15 @@ void ForeignToplevelHandle::treeland_foreign_toplevel_handle_v2_state(wl_array *
     }
 
     Q_EMIT stateChanged();
+}
+
+void ForeignToplevelHandle::treeland_foreign_toplevel_handle_v2_parent(struct ::treeland_foreign_toplevel_handle_v2 *parent)
+{
+    bool hasParent = (parent != nullptr);
+    if (hasParent == m_hasParent) return;
+
+    m_hasParent = hasParent;
+    Q_EMIT parentChanged();
 }
 
 void ForeignToplevelHandle::treeland_foreign_toplevel_handle_v2_done()
@@ -167,7 +182,7 @@ bool TreeLandWindow::isActive()
 
 bool TreeLandWindow::shouldSkip()
 {
-    return false;
+    return m_foreignToplevelHandle && m_foreignToplevelHandle->hasParent();
 }
 
 bool TreeLandWindow::isMinimized()
@@ -248,6 +263,7 @@ void TreeLandWindow::setForeignToplevelHandle(ForeignToplevelHandle* handle)
     connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::pidChanged, this, &AbstractWindow::pidChanged);
     connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::titleChanged, this, &AbstractWindow::titleChanged);
     connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::stateChanged, this, &AbstractWindow::stateChanged);
+    connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::parentChanged, this, &AbstractWindow::shouldSkipChanged);
 }
 
 }
