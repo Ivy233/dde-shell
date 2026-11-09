@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "treelandwindow.h"
+#include "taskmanagersettings.h"
 #include "abstractwindow.h"
 
 #include <cstdint>
@@ -167,7 +168,14 @@ bool TreeLandWindow::isActive()
 
 bool TreeLandWindow::shouldSkip()
 {
-    return false;
+    if (!m_foreignToplevelHandle)
+        return false;
+
+    const auto appid = m_foreignToplevelHandle->appid();
+    if (appid.isEmpty())
+        return false;
+
+    return TaskManagerSettings::instance()->taskbarSkipAppIds().contains(appid);
 }
 
 bool TreeLandWindow::isMinimized()
@@ -247,6 +255,8 @@ void TreeLandWindow::setForeignToplevelHandle(ForeignToplevelHandle* handle)
     connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::appidChanged, this, &AbstractWindow::identityChanged);
     connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::pidChanged, this, &AbstractWindow::pidChanged);
     connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::titleChanged, this, &AbstractWindow::titleChanged);
+    // app_id typically arrives asynchronously and only changes once during initial window registration.
+    connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::appidChanged, this, &AbstractWindow::shouldSkipChanged);
     connect(m_foreignToplevelHandle.get(), &ForeignToplevelHandle::stateChanged, this, &AbstractWindow::stateChanged);
 }
 

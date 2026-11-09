@@ -41,6 +41,7 @@ public:
     bool cgroupsBasedGrouping() const;
     QStringList cgroupsBasedGroupingSkipIds() const;
     QStringList cgroupsBasedGroupingSkipCategories() const;
+    QStringList taskbarSkipAppIds() const;
 
     QStringList windowIconWhitelist() const;
 
@@ -81,5 +82,6 @@ private:
     QStringList m_windowIconWhitelist;
     QStringList m_cgroupsBasedGroupingSkipAppIds;
     QStringList m_cgroupsBasedGroupingSkipCategories;
+    QStringList m_taskbarSkipAppIds;
 };
 }
