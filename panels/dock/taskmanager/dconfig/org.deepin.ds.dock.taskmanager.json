@@ -117,6 +117,17 @@
 			"description[zh_CN]": "启用或禁用任务栏驻留应用；关闭时隐藏未运行的驻留应用并禁止更改驻留状态，但保留已保存的驻留应用列表。",
 			"permissions": "readwrite",
 			"visibility": "private"
+		},
+		"taskbarSkipAppIds": {
+			"value": ["dde-global-search", "deepin-global-search", "org.deepin.dde.global-search"],
+			"serial": 0,
+			"flags": [],
+			"name": "Taskbar Skip App IDs",
+			"name[zh_CN]": "任务栏跳过的应用ID列表",
+			"description": "List of app id that should be skipped from showing in the taskbar",
+			"description[zh_CN]": "不应在任务栏中显示的应用ID列表",
+			"permissions": "readwrite",
+			"visibility": "private"
 		}
 		
 	}

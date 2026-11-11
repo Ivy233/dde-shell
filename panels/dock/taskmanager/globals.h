@@ -24,6 +24,7 @@ static inline const QString TASKMANAGER_SHOW_ATTENTION_ANIMATION_KEY = "showAtte
 static inline const QString TASKMANAGER_CGROUPS_BASED_GROUPING_KEY = "cgroupsBasedGrouping";
 static inline const QString TASKMANAGER_CGROUPS_BASED_GROUPING_SKIP_APPIDS = "cgroupsBasedGroupingSkipAppIds";
 static inline const QString TASKMANAGER_CGROUPS_BASED_GROUPING_SKIP_CATEGORIES = "cgroupsBasedGroupingSkipCategories";
+static inline const QString TASKMANAGER_TASKBAR_SKIP_APPIDS = "taskbarSkipAppIds";
 static inline const QString TASKMANAGER_DOCKEDITEMS_KEY = "Docked_Items";
 constexpr auto TASKMANAGER_DOCKEDELEMENTS_KEY = "dockedElements";
 constexpr auto TASKMANAGER_WINDOW_ICON_WHITELIST_KEY = "windowIconWhitelist";
