@@ -108,11 +108,15 @@ Window {
         if (positionForAnimation === Dock.Top || positionForAnimation === Dock.Bottom) {
             return compositorDrivenResize ? Screen.width : -1
         }
+        // During compositor-driven resize, let the compositor own the
+        // geometry to break the circular binding dockSize <- width <- dockSize.
+        if (compositorDrivenResize && isDragging && Applet.isResizing)
+            return -1
         return dockSize
     }
     height: positionForAnimation === Dock.Left || positionForAnimation === Dock.Right
         ? (compositorDrivenResize ? Screen.height : -1)
-        : dockSize
+        : (compositorDrivenResize && isDragging && Applet.isResizing ? -1 : dockSize)
     color: "transparent"
     flags: Qt.WindowDoesNotAcceptFocus
 
