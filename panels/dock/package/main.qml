@@ -898,6 +898,29 @@ Window {
         }
     }
 
+    // During compositor-driven resize, update the local dockSize so that icon
+    // sizes and layout metrics follow the mouse in real-time. Only Applet.dockSize
+    // (which feeds exclusionZone) is deferred to finishResize() to avoid the
+    // feedback loop that caused the dock to shake.
+    Connections {
+        target: dock
+        enabled: dock.compositorDrivenResize
+            && dock.isDragging && Applet.isResizing
+            && !hideShowAnimation.running
+            && !dockAnimation.running
+        function onWidthChanged() {
+            if (dock.useColumnLayout) {
+                dockSize = dock.width
+            }
+        }
+
+        function onHeightChanged() {
+            if (!dock.useColumnLayout) {
+                dockSize = dock.height
+            }
+        }
+    }
+
     function changeDragAreaAnchor() {
         switch(dock.positionForAnimation) {
         case Dock.Top: {
