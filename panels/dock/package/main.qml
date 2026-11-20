@@ -845,6 +845,13 @@ Window {
 
         function finishResize() {
             dock.isDragging = false
+            if (dock.compositorDrivenResize) {
+                if (dock.useColumnLayout) {
+                    dockSize = dock.width
+                } else {
+                    dockSize = dock.height
+                }
+            }
             Applet.dockSize = dockSize
             itemIconSizeBase = dockItemMaxSize
             pressedAndDragging(false)
@@ -891,25 +898,6 @@ Window {
         }
     }
 
-    Connections {
-        target: dock
-        enabled: dock.compositorDrivenResize
-            // Wayland can apply animation geometry after the animation stops.
-            && dock.isDragging && Applet.isResizing
-            && !hideShowAnimation.running
-            && !dockAnimation.running
-        function onWidthChanged() {
-            if (dock.useColumnLayout) {
-                Applet.dockSize = dock.width
-            }
-        }
-
-        function onHeightChanged() {
-            if (!dock.useColumnLayout) {
-                Applet.dockSize = dock.height
-            }
-        }
-    }
     function changeDragAreaAnchor() {
         switch(dock.positionForAnimation) {
         case Dock.Top: {
