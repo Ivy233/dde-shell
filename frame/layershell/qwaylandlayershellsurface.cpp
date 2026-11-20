@@ -124,11 +124,11 @@ bool QWaylandLayerShellSurface::anchorsSizeConflict() const
 
 void QWaylandLayerShellSurface::trySetAnchorsAndSize()
 {
+    set_anchor(m_dlayerShellWindow->anchors());
     if (!anchorsSizeConflict()) {
-        set_anchor(m_dlayerShellWindow->anchors());
         set_size(m_requestSize.width(), m_requestSize.height());
-        scheduleCommit();
     }
+    scheduleCommit();
 }
 
 void QWaylandLayerShellSurface::applyLayer()
