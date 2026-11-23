@@ -55,6 +55,8 @@ private:
     DLayerShellWindow* m_dlayerShellWindow;
     QSize m_pendingSize;
     QSize m_requestSize;
+    DLayerShellWindow::Anchors m_lastAnchors;
+    QSize m_lastSentSize;
     wl_output *m_output = nullptr;
     bool m_configured = false;
     bool m_commitScheduled = false;

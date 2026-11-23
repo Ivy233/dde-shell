@@ -40,6 +40,7 @@ QWaylandLayerShellSurface::QWaylandLayerShellSurface(QtWayland::zwlr_layer_shell
     connect(m_dlayerShellWindow, &DLayerShellWindow::layerChanged, this, &QWaylandLayerShellSurface::applyLayer);
 
     set_anchor(m_dlayerShellWindow->anchors());
+    m_lastAnchors = m_dlayerShellWindow->anchors();
     connect(m_dlayerShellWindow, &DLayerShellWindow::anchorsChanged, this, &QWaylandLayerShellSurface::trySetAnchorsAndSize);
 
     applyExclusiveZone();
@@ -58,6 +59,7 @@ QWaylandLayerShellSurface::QWaylandLayerShellSurface(QtWayland::zwlr_layer_shell
 
     if (m_requestSize.isValid()) {
         set_size(m_requestSize.width(), m_requestSize.height());
+        m_lastSentSize = m_requestSize;
     }
 }
 
@@ -124,9 +126,22 @@ bool QWaylandLayerShellSurface::anchorsSizeConflict() const
 
 void QWaylandLayerShellSurface::trySetAnchorsAndSize()
 {
-    if (!anchorsSizeConflict()) {
-        set_anchor(m_dlayerShellWindow->anchors());
+    bool changed = false;
+
+    const auto anchors = m_dlayerShellWindow->anchors();
+    if (anchors != m_lastAnchors) {
+        set_anchor(anchors);
+        m_lastAnchors = anchors;
+        changed = true;
+    }
+
+    if (!anchorsSizeConflict() && m_requestSize != m_lastSentSize) {
         set_size(m_requestSize.width(), m_requestSize.height());
+        m_lastSentSize = m_requestSize;
+        changed = true;
+    }
+
+    if (changed) {
         scheduleCommit();
     }
 }
